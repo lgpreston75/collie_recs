@@ -142,6 +142,47 @@ def read_movielens_df_item() -> pd.DataFrame:
 
     return df_item
 
+def read_movielens_df_user() -> pd.DataFrame:
+    """
+    Read ``u.user`` from the MovieLens 100K dataset.
+
+    If there is not a directory at ``$DATA_PATH/ml-100k``, this function creates that directory and
+    downloads the entire dataset there.
+
+    See the MovieLens 100K README for additional information on the dataset:
+    https://files.grouplens.org/datasets/movielens/ml-100k-README.txt
+
+    Returns
+    -------
+    df_user: pd.DataFrame
+        MovieLens 100K ``u.user`` containing columns:
+
+            * user_id
+
+            * age
+        
+            * gender
+
+            * occupation
+
+            * zip code
+
+    Side Effects
+    ------------
+    Creates directory at ``$DATA_PATH/ml-100k`` and downloads data files if data does not exist.
+
+    """
+    _make_data_path_dirs_if_not_exist()
+
+    df_user_path = os.path.join(DATA_PATH, 'ml-100k', 'u.user')
+    if not Path(df_user_path).exists():
+        _download_movielens_100k()
+
+    column_names = ['user id', 'age', 'gender', 'occupation', 'zip code']
+    df_user = pd.read_csv(df_user_path, sep='|', encoding='latin-1', names=column_names)
+
+    return df_user
+
 
 def _make_data_path_dirs_if_not_exist() -> None:
     """Get path to the movielens dataset file."""
@@ -201,7 +242,7 @@ def read_movielens_posters_df() -> pd.DataFrame:
     return posters_df
 
 
-def get_movielens_metadata(df_item: pd.DataFrame = None) -> pd.DataFrame:
+def get_movielens_item_metadata(df_item: pd.DataFrame = None) -> pd.DataFrame:
     """
     Return MovieLens 100K metadata as a DataFrame.
 
@@ -256,5 +297,60 @@ def get_movielens_metadata(df_item: pd.DataFrame = None) -> pd.DataFrame:
     cols.insert(last_genre_index + 1, 'genre_unknown')
     cols.remove('genre_unknown')
     metadata_df = metadata_df[cols]
+
+    return metadata_df
+
+def get_movielens_user_metadata(df_user: pd.DataFrame = None) -> pd.DataFrame:
+    """
+    Return MovieLens 100K metadata as a DataFrame.
+
+    DataFrame returned has the following column order:
+
+    .. code-block:: python
+
+        [
+            'user id', 'age', 'gender', 'occupation', 'zip code'
+        ]
+
+    See the MovieLens 100K README for additional information on the dataset:
+    https://files.grouplens.org/datasets/movielens/ml-100k-README.txt
+
+    Parameters
+    ----------
+    df_user: pd.DataFrame
+        DataFrame of MovieLens 100K ``u.user`` containing binary columns of user names and
+        metadata. If ``None``, will automatically read the output of ``read_movielens_df_user()``
+
+    Returns
+    -------
+    metadata_df: pd.DataFrame
+
+    """
+    if df_user is None:
+        df_user = read_movielens_df_user()
+
+    # format movies decade
+    # df_item_date = df_user.iloc[:, [2]].copy()
+    # df_item_date.loc[:, 'year'] = df_item_date['release_date'].dt.year.fillna(1900)
+    # df_item_date.loc[:, 'decade'] = ((df_item_date['year'] - 1900) / 10).astype('int64') * 10
+    # df_decades = pd.get_dummies(df_item_date.decade, prefix='decade')
+    # df_decades.columns = ['decade_unknown'] + df_decades.columns[1:].tolist()
+
+    # format movie genre
+    # df_item_genre = df_item.iloc[:, list(range(4, 23))].copy()
+    # df_item_genre.columns = 'genre_' + df_item_genre.columns.str.lower()
+
+    # format final metadata structure
+    # metadata_df = pd.merge(df_item_genre, df_decades, left_index=True, right_index=True)
+
+    # find and swap genre_unknown to end of genre list
+    # cols = metadata_df.columns.values.tolist()
+    # last_genre_element = list(filter(re.compile('genre*').match, cols))[-1]
+    # last_genre_index = cols.index(last_genre_element)
+    # cols.insert(last_genre_index + 1, 'genre_unknown')
+    # cols.remove('genre_unknown')
+    # metadata_df = metadata_df[cols]
+
+    metadata_df = df_user.drop('user id', axis=1)
 
     return metadata_df
